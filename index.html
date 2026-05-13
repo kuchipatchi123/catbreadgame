@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>진짜 식빵 굽는 고양이 (Hard Mode)</title>
+    <style>
+        body { text-align: center; background-color: #fcf8f2; font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; overflow: hidden; margin: 0; }
+        #container { position: relative; display: inline-block; margin-top: 20px; }
+        canvas { background-color: #fff; border: 8px solid #5d4037; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); cursor: pointer; }
+        #retryBtn { 
+            position: absolute; top: 70%; left: 50%; transform: translate(-50%, -50%);
+            padding: 15px 40px; font-size: 20px; font-weight: bold; cursor: pointer;
+            background-color: #ff9800; color: white; border: none; border-radius: 50px;
+            display: none; box-shadow: 0 5px 15px rgba(0,0,0,0.2); transition: 0.2s;
+            z-index: 10;
+        }
+        #retryBtn:hover { background-color: #f57c00; transform: translate(-50%, -55%); }
+        h1 { color: #5d4037; margin-bottom: 5px; }
+        .inst { color: #8d6e63; margin-top: 0; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>식빵 굽는 고양이 🍞</h1>
+    <p class="inst">꾹 눌러서 따끈하게! (시간이 갈수록 온도가 요동칩니다!)</p>
+    <div id="container">
+        <canvas id="gameCanvas" width="600" height="450"></canvas>
+        <button id="retryBtn" onclick="resetGame()">다시 도전하기 🐾</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const retryBtn = document.getElementById('retryBtn');
+
+        let temp, score, isGameOver, isPressing, startTime, particles;
+
+        function resetGame() {
+            temp = 50; score = 0; isGameOver = false; isPressing = false;
+            startTime = Date.now(); particles = [];
+            retryBtn.style.display = 'none';
+            render();
+        }
+
+        window.addEventListener('mousedown', () => isPressing = true);
+        window.addEventListener('mouseup', () => isPressing = false);
+        window.addEventListener('keydown', (e) => { if(e.code === 'Space') isPressing = true; });
+        window.addEventListener('keyup', (e) => { if(e.code === 'Space') isPressing = false; });
+
+        function createSmoke(x, y, color, intensity) {
+            if (Math.random() < intensity) {
+                particles.push({
+                    x: x + (Math.random() - 0.5) * 60,
+                    y: y - 20, size: 8 + Math.random() * 12,
+                    vy: -(1 + Math.random() * 1.5), life: 60, color: color
+                });
+            }
+        }
+
+        function drawLoaf(x, y, w, h, color, isCat = false, status = "normal") {
+            ctx.save();
+            ctx.translate(x, y);
+            
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(-w/2, h/2);
+            ctx.lineTo(w/2, h/2);
+            ctx.lineTo(w/2, -h/4);
+            ctx.bezierCurveTo(w/2, -h/1.2, -w/2, -h/1.2, -w/2, -h/4);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.strokeStyle = "#4e342e";
+            ctx.lineWidth = 4;
+            ctx.stroke();
+
+            if (isCat) {
+                ctx.beginPath();
+                ctx.moveTo(-w/2+15, -h/3); ctx.lineTo(-w/2-5, -h/1.5); ctx.lineTo(-w/2+45, -h/3);
+                ctx.moveTo(w/2-15, -h/3); ctx.lineTo(w/2+5, -h/1.5); ctx.lineTo(w/2-45, -h/3);
+                ctx.fill(); ctx.stroke();
+
+                ctx.strokeStyle = (status === "burned") ? "#fff" : "#4e342e";
+                ctx.lineWidth = 3;
+                if (status === "normal") {
+                    ctx.beginPath(); ctx.arc(-20, -10, 8, 0, Math.PI); ctx.stroke();
+                    ctx.beginPath(); ctx.arc(20, -10, 8, 0, Math.PI); ctx.stroke();
+                } else if (status === "cold") {
+                    ctx.strokeRect(-30, -15, 12, 2); ctx.strokeRect(18, -15, 12, 2);
+                } else {
+                    ctx.beginPath(); ctx.moveTo(-28, -18); ctx.lineTo(-12, -2); ctx.moveTo(-12, -18); ctx.lineTo(-28, -2); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(12, -18); ctx.lineTo(28, -2); ctx.moveTo(28, -18); ctx.lineTo(12, -2); ctx.stroke();
+                }
+                ctx.fillStyle = (status === "burned") ? "#fff" : "#4e342e";
+                ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-4, 5); ctx.lineTo(4, 5); ctx.fill();
+            }
+            ctx.restore();
+        }
+
+        function update() {
+            if (isGameOver) return;
+            
+            // 난이도 가중치: 시간이 지날수록 모든 변화가 빨라짐
+            let difficulty = 1 + (score * 0.05); 
+
+            if (isPressing) {
+                temp += 1.5 * difficulty; 
+            } else {
+                // 식는 속도는 기본 0.7에 시간에 따른 추가 하락폭을 더함
+                temp -= (0.7 + score * 0.02) * difficulty;
+            }
+
+            temp = Math.max(0, Math.min(100, temp));
+            if (temp <= 0 || temp >= 100) isGameOver = true;
+            if (temp > 75) createSmoke(300, 250, temp > 90 ? "#444" : "#ffcccc", 0.3);
+            score = (Date.now() - startTime) / 1000;
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            drawLoaf(150, 180, 100, 110, "#f5c469");
+            drawLoaf(450, 180, 100, 110, "#f5c469");
+            
+            let catColor = "#fff3e0";
+            let status = "normal";
+            if (temp < 35) { catColor = "#d1e9ff"; status = "cold"; }
+            else if (temp > 75) { catColor = `rgb(255, ${200-(temp-75)*5}, ${150-(temp-75)*5})`; status = "hot"; }
+            else { 
+                let r = 255, g = 243 - (temp-35)*1.5, b = 224 - (temp-35)*2.5;
+                catColor = `rgb(${r},${g},${b})`;
+            }
+
+            if (isGameOver && temp >= 100) { catColor = "#222"; status = "burned"; }
+
+            let vib = (status !== "normal") ? Math.sin(Date.now()*0.1)*3 : 0;
+            drawLoaf(300 + vib, 280, 140, 150, catColor, true, status);
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                ctx.globalAlpha = p.life / 60;
+                ctx.fillStyle = p.color;
+                ctx.beginPath(); ctx.arc(p.x, p.y += p.vy, p.size *= 0.97, 0, Math.PI*2); ctx.fill();
+                p.life--; if(p.life <= 0) particles.splice(i, 1);
+            }
+            ctx.globalAlpha = 1;
+
+            ctx.fillStyle = "#4e342e"; ctx.font = "bold 20px sans-serif"; ctx.textAlign = "left";
+            ctx.fillText(`Time: ${Math.floor(score)}s`, 25, 40);
+            
+            // 게이지 배경
+            ctx.fillStyle = "#eee";
+            if(ctx.roundRect) {
+                ctx.beginPath(); ctx.roundRect(540, 50, 25, 350, 10); ctx.fill();
+            } else {
+                ctx.fillRect(540, 50, 25, 350);
+            }
+
+            // 게이지 바
+            ctx.fillStyle = temp > 75 ? "#f44336" : temp < 35 ? "#2196f3" : "#4caf50";
+            let gaugeHeight = temp * 3.5;
+            ctx.fillRect(540, 400 - gaugeHeight, 25, gaugeHeight);
+
+            if (isGameOver) {
+                ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(0,0,canvas.width, canvas.height);
+                ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.font = "bold 35px sans-serif";
+                ctx.fillText(temp >= 100 ? "고양이가 탔어요! 😭" : "고양이가 얼었어요! 🧊", 300, 200);
+                ctx.font = "24px sans-serif";
+                ctx.fillText(`최종 기록: ${Math.floor(score)}초`, 300, 250);
+                retryBtn.style.display = 'block';
+            } else {
+                update();
+                requestAnimationFrame(render);
+            }
+        }
+        resetGame();
+    </script>
+</body>
+</html>
